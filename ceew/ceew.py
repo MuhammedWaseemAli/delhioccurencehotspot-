@@ -12,48 +12,80 @@ import zipfile
 import io
 import os
 
-# Function to download and unzip a file from a URL
-def download_and_unzip(url, extract_to='.'):
+# Define URLs for the zip files
+csv_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
+shapefile_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/delhi%20shape%20file.zip?raw=true'
+
+# Function to download and extract a zip file
+def download_and_extract_zip(url, extract_to):
     response = requests.get(url)
-    z = zipfile.ZipFile(io.BytesIO(response.content))
-    z.extractall(path=extract_to)
+    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+        z.extractall(extract_to)
 
-# URLs to the zipped CSV and shapefile
-csv_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
-shapefile_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/delhi%20shape%20file.zip?raw=true'
+# Create directories for extraction if they don't exist
+csv_extract_dir = 'extracted_csv'
+shapefile_extract_dir = 'extracted_shapefile'
+os.makedirs(csv_extract_dir, exist_ok=True)
+os.makedirs(shapefile_extract_dir, exist_ok=True)
 
-# Download and extract CSV
-download_and_unzip(csv_url, extract_to='.')
+# Download and extract files
+download_and_extract_zip(csv_zip_url, csv_extract_dir)
+download_and_extract_zip(shapefile_zip_url, shapefile_extract_dir)
 
-# Load the CSV file
-complaints_df = pd.read_csv('complaintcopiedcsv.csv', encoding='ISO-8859-1')
+# Check for the existence of the nested zip file
+nested_shapefile_zip = os.path.join(shapefile_extract_dir, 'delhi shape file.zip')
 
-# Remove rows 2 to 57556
-complaints_df = complaints_df.drop(complaints_df.index[1:57556])
+# Function to extract a nested zip file
+def extract_nested_zip(zip_path, extract_to):
+    if os.path.isfile(zip_path):
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_to)
+            print(f"Extracted {zip_path} to {extract_to}")
+    else:
+        print(f"File {zip_path} not found")
 
-# Split latitude and longitude into separate columns
-complaints_df[['Latitude', 'Longitude']] = complaints_df['Latitude & Longitude'].str.split(',', expand=True)
-complaints_df['Latitude'] = complaints_df['Latitude'].astype(float)
-complaints_df['Longitude'] = complaints_df['Longitude'].astype(float)
+# Extract nested zip files if present
+extract_nested_zip(nested_shapefile_zip, shapefile_extract_dir)
 
-# Download and extract shapefile
-download_and_unzip(shapefile_url, extract_to='./shapefile')
+@st.cache_data
+def load_data():
+    # Load the CSV file
+    csv_path = os.path.join(csv_extract_dir, 'complaintcopiedcsv.csv')
+    if os.path.isfile(csv_path):
+        complaints_df = pd.read_csv(csv_path, encoding='ISO-8859-1')
+        # Remove rows 2 to 57556
+        complaints_df = complaints_df.drop(complaints_df.index[1:57556])
+        # Split latitude and longitude into separate columns
+        complaints_df[['Latitude', 'Longitude']] = complaints_df['Latitude & Longitude'].str.split(',', expand=True)
+        complaints_df['Latitude'] = complaints_df['Latitude'].astype(float)
+        complaints_df['Longitude'] = complaints_df['Longitude'].astype(float)
+        return complaints_df
+    else:
+        raise FileNotFoundError(f"CSV file {csv_path} not found")
 
-# Find the path to the shapefile
-shapefile_path = next((file for file in os.listdir('./shapefile') if file.endswith('.shp')), None)
-shapefile_path = os.path.join('./shapefile', shapefile_path)
+@st.cache_data
+def load_shapefile():
+    # Load the shapefile
+    shapefile_dir = os.path.join(shapefile_extract_dir, 'delhi shape file')  # Update path to the folder containing shp files
+    shapefile_path = os.path.join(shapefile_dir, 'Delhi_Wards.shp')
+    if os.path.isfile(shapefile_path):
+        wards_gdf = gpd.read_file(shapefile_path)
+        # Set CRS to EPSG:4326 if not already set
+        if wards_gdf.crs is None:
+            wards_gdf.set_crs(epsg=4326, inplace=True)
+        else:
+            wards_gdf.to_crs(epsg=4326, inplace=True)
+        return wards_gdf
+    else:
+        raise FileNotFoundError(f"Shapefile {shapefile_path} not found")
 
-# Load the shapefile
-wards_gdf = gpd.read_file(shapefile_path)
+def get_style_function():
+    return lambda x: {'fillColor': 'transparent', 'color': 'black', 'weight': 1}
 
-# Set CRS to EPSG:4326 if not already set
-if wards_gdf.crs is None:
-    wards_gdf.set_crs(epsg=4326, inplace=True)
-else:
-    wards_gdf.to_crs(epsg=4326, inplace=True)
+def create_map(offence_type, complaints_df, wards_gdf):
+    # Make a copy of the wards GeoDataFrame to avoid issues with mutable objects
+    wards_gdf = wards_gdf.copy()
 
-# Define a function to create a map based on offence type
-def create_map(offence_type):
     # Filter for specific offences
     filtered_df = complaints_df[complaints_df['Offences'] == offence_type].copy()
 
@@ -95,7 +127,7 @@ def create_map(offence_type):
     folium.GeoJson(
         wards_gdf,
         name='Delhi Wards',
-        style_function=lambda x: {'fillColor': 'transparent', 'color': 'black', 'weight': 1}
+        style_function=get_style_function()
     ).add_to(m)
 
     # Add circle markers for each of the top 100 clusters with occurrences count
@@ -147,7 +179,7 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
     body {
         font-family: 'Roboto', sans-serif;
-        background: url("https://images.pexels.com/photos/531880/pexels-photo-531880.jpeg");
+        background: url("https://example.com/background.jpg");
         background-size: cover;
     }
     .title {
@@ -156,57 +188,59 @@ st.markdown(
         text-align: center;
         padding: 10px;
         background-color: rgba(0, 0, 0, 0.5);
-        border-radius: 10px;
-        margin-top: 20px;
+        border-radius: 5px;
     }
     .description {
         font-size: 18px;
         color: white;
         text-align: center;
-        padding: 5px;
+        padding: 10px;
         background-color: rgba(0, 0, 0, 0.5);
-        border-radius: 10px;
-        margin-bottom: 20px;
-    }
-    .sidebar .sidebar-content {
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 10px;
+        border-radius: 5px;
     }
     .dataframe {
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.8);
-        margin: 0 auto;
+        margin-top: 20px;
+        background-color: rgba(255, 255, 255, 0.8);
         padding: 10px;
+        border-radius: 10px;
     }
     </style>
-    """,
-    unsafe_allow_html=True
-)
+    """, unsafe_allow_html=True)
 
-st.markdown('<div class="title">Delhi top 100 Complaints hotspots by Offence Type</div>', unsafe_allow_html=True)
-st.markdown('<div class="description">Just select an offence from below you will see top 100 spots where more complaints are coming and also its pictures of complaint and statuses.</div>', unsafe_allow_html=True)
+st.markdown('<div class="title">Delhi Complaints Map</div>', unsafe_allow_html=True)
+st.markdown('<div class="description">Select an offence type to view the map and top 100 complaint hotspot locations-please kindly wait 3-5 minutes for the file to load all images .</div>', unsafe_allow_html=True)
 
-# Define offence types
+# Load data and shapefiles
+complaints_df = load_data()
+wards_gdf = load_shapefile()
+
+# Dropdown for offence selection
 offence_types = [
-    'Dumping of Construction & Demolition Waste',
-    'Air Pollution due to industries',
     'Illegal dumping of Garbage on road sides/ vacant land',
-    'Burning of Biomass/garden waste in open',
-    'Others'
+    'Burning of garbage/plastic waste',
+    'Air pollution from the sources other than Industry',
+    'Potholes on Roads',
+    'Road Dust',
+    'Dust Pollution due to Construction/ Demolition activity',
+    'Sale and Storage of banned SUP items',
+    'Mfg. of banned SUP items in non Industrial Area',
+    'Noise pollution from the sources other than Industry',
+    'Visible smoke from vehicle exhaust'
 ]
 
-# Create a dropdown for offence types
-selected_offence = st.selectbox("Select an Offence Type:", offence_types)
+selected_offence = st.selectbox('Select Offence Type:', offence_types)
 
-# Create map and table based on selected offence type
-if selected_offence:
-    folium_map, top_100_occurrences = create_map(selected_offence)
+# Create and display map and tabulation for the selected offence
+m, top_100_occurrences = create_map(selected_offence, complaints_df, wards_gdf)
 
-    # Display map in Streamlit
-    folium_map.save("map.html")
-    with open("map.html", "r") as file:
-        map_html = file.read()
-    components.html(map_html, height=600)
+# Save map to HTML
+map_html = m._repr_html_()
 
-    # Display tabulated data in Streamlit
-    st.write(top_100_occurrences)
+# Display the map in Streamlit using components.html
+components.html(map_html, height=600)
+
+# Display the top 10 locations and their occurrence numbers
+top_10_locations = top_100_occurrences[['Occurrences', 'Geo Location']].head(10)
+st.markdown('<div class="dataframe">', unsafe_allow_html=True)
+st.write("Top 10 Locations with Occurrences:")
+st.dataframe(top_10_locations)
