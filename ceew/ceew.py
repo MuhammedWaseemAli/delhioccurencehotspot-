@@ -137,41 +137,17 @@ def create_map(offence_type, complaints_df, wards_gdf):
 
 # Page configuration
 st.set_page_config(page_title="Delhi Complaints Map", layout="wide")
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-    body {
-        font-family: 'Roboto', sans-serif;
-        background: url("https://www.istockphoto.com/photo/asian-woman-are-going-to-work-she-wears-n95-mask-prevent-pm2-5-dust-and-smog-she-is-gm1126465039-296577928");
-        background-size: cover;
-    }
-    .title {
-        font-size: 36px;
-        color: white;
-        text-align: center;
-        padding: 10px;
-        background-color: rgba(0, 0, 0, 0.5);
-        border-radius: 5px;
-    }
-    .description {
-        font-size: 18px;
-        color: white;
-        text-align: center;
-        padding: 10px;
-        background-color: rgba(0, 0, 0, 0.5);
-        border-radius: 5px;
-    }
-    .dataframe {
-        margin-top: 20px;
-        background-color: rgba(255, 255, 255, 0.8);
-        padding: 10px;
-        border-radius: 10px;
-    }
-    footer {visibility: hidden;}
-    .viewerBadge_link__1S137 {visibility: hidden;}
-    </style>
-    """, unsafe_allow_html=True)
+
+# Hide Streamlit style
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            .stApp { background: white; }
+            .viewerBadge_link__1S137 {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 st.markdown('<div class="title">Delhi Complaints Map</div>', unsafe_allow_html=True)
 st.markdown(
@@ -191,4 +167,3 @@ map_html = f"{m.get_root().render()}"
 components.html(map_html, height=700)
 
 st.dataframe(top_100_occurrences[['Occurrences', 'Geo Location', 'Latitude', 'Longitude']], height=300)
-
