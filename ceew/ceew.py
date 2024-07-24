@@ -49,13 +49,13 @@ extract_nested_zip(nested_shapefile_zip, shapefile_extract_dir)
 
 @st.cache_data
 def load_data():
-    # Load the CSV file
+    
     csv_path = os.path.join(csv_extract_dir, 'complaintcopiedcsv.csv')
     if os.path.isfile(csv_path):
         complaints_df = pd.read_csv(csv_path, encoding='ISO-8859-1')
-        # Remove rows 2 to 57556
+        
         complaints_df = complaints_df.drop(complaints_df.index[1:57556])
-        # Split latitude and longitude into separate columns
+        
         complaints_df[['Latitude', 'Longitude']] = complaints_df['Latitude & Longitude'].str.split(',', expand=True)
         complaints_df['Latitude'] = complaints_df['Latitude'].astype(float)
         complaints_df['Longitude'] = complaints_df['Longitude'].astype(float)
@@ -65,12 +65,12 @@ def load_data():
 
 @st.cache_data
 def load_shapefile():
-    # Load the shapefile
+    
     shapefile_dir = os.path.join(shapefile_extract_dir, 'delhi shape file')  # Update path to the folder containing shp files
     shapefile_path = os.path.join(shapefile_dir, 'Delhi_Wards.shp')
     if os.path.isfile(shapefile_path):
         wards_gdf = gpd.read_file(shapefile_path)
-        # Set CRS to EPSG:4326 if not already set
+        
         if wards_gdf.crs is None:
             wards_gdf.set_crs(epsg=4326, inplace=True)
         else:
