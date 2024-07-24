@@ -12,7 +12,20 @@ import zipfile
 import io
 import os
 
-#url reading karna
+# Function to hide the Streamlit menu
+def hide_streamlit_menu():
+    hide_menu_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        </style>
+    """
+    st.markdown(hide_menu_style, unsafe_allow_html=True)
+
+# Call the function to hide the Streamlit menu
+hide_streamlit_menu()
+
+# url reading karna
 csv_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
 shapefile_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/delhi%20shape%20file.zip?raw=true'
 
@@ -198,49 +211,30 @@ st.markdown(
         background-color: rgba(0, 0, 0, 0.5);
         border-radius: 5px;
     }
-    .dataframe {
-        margin-top: 20px;
-        background-color: rgba(255, 255, 255, 0.8);
-        padding: 10px;
-        border-radius: 10px;
-    }
     </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.title("Complaints Data Analysis for Delhi")
+
+st.markdown("""
+    <div class="description">
+    This app visualizes the complaints data in Delhi, focusing on various types of offences and their occurrences.
+    </div>
     """, unsafe_allow_html=True)
-
-st.markdown('<div class="title">Delhi Complaints Map</div>', unsafe_allow_html=True)
-st.markdown('<div class="description">Select an offence type to view the map and top 100 complaint hotspot locations-please kindly wait 3-5 minutes for the file to load all images .</div>', unsafe_allow_html=True)
-
 
 complaints_df = load_data()
 wards_gdf = load_shapefile()
 
-
-offence_types = [
-    'Illegal dumping of Garbage on road sides/ vacant land',
-    'Burning of garbage/plastic waste',
-    'Air pollution from the sources other than Industry',
-    'Potholes on Roads',
-    'Road Dust',
-    'Dust Pollution due to Construction/ Demolition activity',
-    'Sale and Storage of banned SUP items',
-    'Mfg. of banned SUP items in non Industrial Area',
-    'Noise pollution from the sources other than Industry',
-    'Visible smoke from vehicle exhaust'
-]
-
-selected_offence = st.selectbox('Select Offence Type:', offence_types)
-
+offence_types = complaints_df['Offences'].unique()
+selected_offence = st.selectbox("Select an Offence Type", offence_types)
 
 m, top_100_occurrences = create_map(selected_offence, complaints_df, wards_gdf)
 
-
-map_html = m._repr_html_()
-
-
+map_html = f'<iframe srcdoc="{m.get_root().render()}" width="100%" height="600px" style="border:none;"></iframe>'
 components.html(map_html, height=600)
 
+st.markdown("## Top 100 Occurrence Locations")
+st.write(top_100_occurrences[['Geo Location', 'Occurrences']])
 
-top_10_locations = top_100_occurrences[['Occurrences', 'Geo Location']].head(10)
-st.markdown('<div class="dataframe">', unsafe_allow_html=True)
-st.write("Top 10 Locations with Occurrences:")
-st.dataframe(top_10_locations)
