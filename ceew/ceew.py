@@ -8,7 +8,9 @@ import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 import streamlit.components.v1 as components
-
+import requests
+import zipfile
+import io
 # Download the zipped CSV file from GitHub
 url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
 response = requests.get(url)
