@@ -12,31 +12,29 @@ import zipfile
 import io
 import os
 
-
-#url reading karna
+# URL reading
 csv_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
 shapefile_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/delhi%20shape%20file.zip?raw=true'
 
-# zip file ko extract karna
+# Extract zip file
 def download_and_extract_zip(url, extract_to):
     response = requests.get(url)
     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
         z.extractall(extract_to)
 
-# agar zip nahi he tho
+# Create directories if they don't exist
 csv_extract_dir = 'extracted_csv'
 shapefile_extract_dir = 'extracted_shapefile'
 os.makedirs(csv_extract_dir, exist_ok=True)
 os.makedirs(shapefile_extract_dir, exist_ok=True)
 
-# download aur extract
+# Download and extract
 download_and_extract_zip(csv_zip_url, csv_extract_dir)
 download_and_extract_zip(shapefile_zip_url, shapefile_extract_dir)
 
-# agar nested zip file he tho . hamare paas nested thaa
+# Nested zip file extraction
 nested_shapefile_zip = os.path.join(shapefile_extract_dir, 'delhi shape file.zip')
 
-# nested extract karne keliye
 def extract_nested_zip(zip_path, extract_to):
     if os.path.isfile(zip_path):
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -45,18 +43,14 @@ def extract_nested_zip(zip_path, extract_to):
     else:
         print(f"File {zip_path} not found")
 
-# nested  extract karna aur speed banana program cache
 extract_nested_zip(nested_shapefile_zip, shapefile_extract_dir)
 
 @st.cache_data
 def load_data():
-    
     csv_path = os.path.join(csv_extract_dir, 'complaintcopiedcsv.csv')
     if os.path.isfile(csv_path):
         complaints_df = pd.read_csv(csv_path, encoding='ISO-8859-1')
-        
         complaints_df = complaints_df.drop(complaints_df.index[1:57556])
-        
         complaints_df[['Latitude', 'Longitude']] = complaints_df['Latitude & Longitude'].str.split(',', expand=True)
         complaints_df['Latitude'] = complaints_df['Latitude'].astype(float)
         complaints_df['Longitude'] = complaints_df['Longitude'].astype(float)
@@ -66,12 +60,10 @@ def load_data():
 
 @st.cache_data
 def load_shapefile():
-    
-    shapefile_dir = os.path.join(shapefile_extract_dir, 'delhi shape file')  # Update path to the folder containing shp files
+    shapefile_dir = os.path.join(shapefile_extract_dir, 'delhi shape file')
     shapefile_path = os.path.join(shapefile_dir, 'Delhi_Wards.shp')
     if os.path.isfile(shapefile_path):
         wards_gdf = gpd.read_file(shapefile_path)
-        
         if wards_gdf.crs is None:
             wards_gdf.set_crs(epsg=4326, inplace=True)
         else:
@@ -84,54 +76,29 @@ def get_style_function():
     return lambda x: {'fillColor': 'transparent', 'color': 'black', 'weight': 1}
 
 def create_map(offence_type, complaints_df, wards_gdf):
-    
     wards_gdf = wards_gdf.copy()
-
-    
     filtered_df = complaints_df[complaints_df['Offences'] == offence_type].copy()
-
-    
     filtered_df['Latitude_rad'] = np.radians(filtered_df['Latitude'])
     filtered_df['Longitude_rad'] = np.radians(filtered_df['Longitude'])
-
-    
     coords = filtered_df[['Latitude_rad', 'Longitude_rad']].values
     db = DBSCAN(eps=0.00000085, min_samples=1, metric='haversine').fit(coords)
-
-    
     filtered_df['Cluster'] = db.labels_
-
-    
     clustered_counts = filtered_df.groupby('Cluster').size().reset_index(name='Occurrences')
-
-    
     cluster_centers = filtered_df.groupby('Cluster').agg({
         'Latitude': 'mean',
         'Longitude': 'mean',
-        'Geo Location': 'first',  # Take the first occurrence of Geo Location as representative
+        'Geo Location': 'first',
     }).reset_index()
-
-    
     clustered_data = pd.merge(cluster_centers, clustered_counts, on='Cluster')
-
-    
     top_100_occurrences = clustered_data.sort_values(by='Occurrences', ascending=False).head(100)
-
-    
     norm = mcolors.Normalize(vmin=top_100_occurrences['Occurrences'].min(), vmax=top_100_occurrences['Occurrences'].max())
     cmap = cm.get_cmap('YlOrRd')
-
-    
     m = folium.Map(location=[28.7041, 77.1025], zoom_start=11)
-
-    
     folium.GeoJson(
         wards_gdf,
         name='Delhi Wards',
         style_function=get_style_function()
     ).add_to(m)
-
-    
     for idx, row in top_100_occurrences.iterrows():
         cluster_complaints = filtered_df[filtered_df['Cluster'] == row['Cluster']]
         resolve_images = ''.join([f"<img src='{img}' width='150' height='150'><br>" for img in cluster_complaints['Resolve Image'].dropna()])
@@ -145,15 +112,13 @@ def create_map(offence_type, complaints_df, wards_gdf):
                          f"Offence Images:<br>{offence_images}")
         folium.CircleMarker(
             location=[row['Latitude'], row['Longitude']],
-            radius=5 + row['Occurrences'] / 10,  # radius try karthe he
+            radius=5 + row['Occurrences'] / 10,
             color=color,
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
             popup=folium.Popup(popup_content, max_width=300, max_height=600)
         ).add_to(m)
-
-    
     legend_html = '''
     <div style="position: fixed; 
         bottom: 50px; left: 50px; width: 250px; height: 150px; 
@@ -167,12 +132,10 @@ def create_map(offence_type, complaints_df, wards_gdf):
         <i style="background:#bd0026; width: 20px; height: 20px; display: inline-block;"></i>&nbsp;High (>10)<br>
     </div>
     '''
-
     m.get_root().html.add_child(folium.Element(legend_html))
-
     return m, top_100_occurrences
 
-
+# Page configuration
 st.set_page_config(page_title="Delhi Complaints Map", layout="wide")
 st.markdown(
     """
@@ -205,43 +168,27 @@ st.markdown(
         padding: 10px;
         border-radius: 10px;
     }
+    footer {visibility: hidden;}
+    .viewerBadge_link__1S137 {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 st.markdown('<div class="title">Delhi Complaints Map</div>', unsafe_allow_html=True)
-st.markdown('<div class="description">Select an offence type to view the map and top 100 complaint hotspot locations-please kindly wait 3-5 minutes for the file to load all images .</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="description">Explore the top 100 complaint hotspots in Delhi based on different offence types.</div>',
+    unsafe_allow_html=True)
 
-
+# Load data
 complaints_df = load_data()
 wards_gdf = load_shapefile()
 
+offence_types = complaints_df['Offences'].unique()
+selected_offence_type = st.selectbox("Select an offence type to visualize:", offence_types)
 
-offence_types = [
-    'Illegal dumping of Garbage on road sides/ vacant land',
-    'Burning of garbage/plastic waste',
-    'Air pollution from the sources other than Industry',
-    'Potholes on Roads',
-    'Road Dust',
-    'Dust Pollution due to Construction/ Demolition activity',
-    'Sale and Storage of banned SUP items',
-    'Mfg. of banned SUP items in non Industrial Area',
-    'Noise pollution from the sources other than Industry',
-    'Visible smoke from vehicle exhaust'
-]
+m, top_100_occurrences = create_map(selected_offence_type, complaints_df, wards_gdf)
+map_html = f"{m.get_root().render()}"
 
-selected_offence = st.selectbox('Select Offence Type:', offence_types)
+components.html(map_html, height=700)
 
+st.dataframe(top_100_occurrences[['Occurrences', 'Geo Location', 'Latitude', 'Longitude']], height=300)
 
-m, top_100_occurrences = create_map(selected_offence, complaints_df, wards_gdf)
-
-
-map_html = m._repr_html_()
-
-
-components.html(map_html, height=600)
-
-
-top_10_locations = top_100_occurrences[['Occurrences', 'Geo Location']].head(10)
-st.markdown('<div class="dataframe">', unsafe_allow_html=True)
-st.write("Top 10 Locations with Occurrences:")
-st.dataframe(top_10_locations) 
