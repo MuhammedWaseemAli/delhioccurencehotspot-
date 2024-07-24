@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import folium
@@ -11,14 +10,24 @@ import streamlit.components.v1 as components
 import requests
 import zipfile
 import io
-# Download the zipped CSV file from GitHub
-url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
-response = requests.get(url)
-z = zipfile.ZipFile(io.BytesIO(response.content))
+import os
 
-# Extract and read the CSV file from the zip
-with z.open('complaintcopiedcsv.csv') as f:
-    complaints_df = pd.read_csv(f, encoding='ISO-8859-1')
+# Function to download and unzip a file from a URL
+def download_and_unzip(url, extract_to='.'):
+    response = requests.get(url)
+    z = zipfile.ZipFile(io.BytesIO(response.content))
+    z.extractall(path=extract_to)
+
+# URLs to the zipped CSV and shapefile
+csv_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
+shapefile_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/delhi%20shape%20file.zip?raw=true'
+
+# Download and extract CSV
+download_and_unzip(csv_url, extract_to='.')
+
+# Load the CSV file
+complaints_df = pd.read_csv('complaintcopiedcsv.csv', encoding='ISO-8859-1')
+
 # Remove rows 2 to 57556
 complaints_df = complaints_df.drop(complaints_df.index[1:57556])
 
@@ -27,8 +36,14 @@ complaints_df[['Latitude', 'Longitude']] = complaints_df['Latitude & Longitude']
 complaints_df['Latitude'] = complaints_df['Latitude'].astype(float)
 complaints_df['Longitude'] = complaints_df['Longitude'].astype(float)
 
+# Download and extract shapefile
+download_and_unzip(shapefile_url, extract_to='./shapefile')
+
+# Find the path to the shapefile
+shapefile_path = next((file for file in os.listdir('./shapefile') if file.endswith('.shp')), None)
+shapefile_path = os.path.join('./shapefile', shapefile_path)
+
 # Load the shapefile
-shapefile_path = r'C:\Users\wasee\Downloads\Delhi_Wards.shp'
 wards_gdf = gpd.read_file(shapefile_path)
 
 # Set CRS to EPSG:4326 if not already set
@@ -132,7 +147,7 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
     body {
         font-family: 'Roboto', sans-serif;
-        background: url("https://example.com/background.jpg");
+        background: url("https://images.pexels.com/photos/531880/pexels-photo-531880.jpeg");
         background-size: cover;
     }
     .title {
@@ -176,32 +191,22 @@ offence_types = [
     'Dumping of Construction & Demolition Waste',
     'Air Pollution due to industries',
     'Illegal dumping of Garbage on road sides/ vacant land',
-    'Burning of Biomass/garden waste',
-    'Burning of garbage/plastic waste',
-    'Air pollution from the sources other than Industry',
-    'Potholes on Roads',
-    'Road Dust',
-    'Dust Pollution due to Construction/ Demolition activity',
-    'Sale and Storage of banned SUP items',
-    'Mfg. of banned SUP items in non Industrial Area',
-    'Noise pollution from the sources other than Industry',
-    'Visible smoke from vehicle exhaust'   
+    'Burning of Biomass/garden waste in open',
+    'Others'
 ]
 
-# Dropdown for offence selection
-selected_offence = st.selectbox('Select Offence Type:', offence_types)
+# Create a dropdown for offence types
+selected_offence = st.selectbox("Select an Offence Type:", offence_types)
 
-# Create and display map and tabulation for the selected offence
-m, top_100_occurrences = create_map(selected_offence)
+# Create map and table based on selected offence type
+if selected_offence:
+    folium_map, top_100_occurrences = create_map(selected_offence)
 
-# Save map to HTML
-map_html = m._repr_html_()
+    # Display map in Streamlit
+    folium_map.save("map.html")
+    with open("map.html", "r") as file:
+        map_html = file.read()
+    components.html(map_html, height=600)
 
-# Display the map in Streamlit using components.html
-components.html(map_html, height=600)
-
-# Display the top 10 locations and their occurrence numbers
-top_10_locations = top_100_occurrences[['Occurrences', 'Geo Location']].head(10)
-st.markdown('<div class="dataframe">', unsafe_allow_html=True)
-st.write("Top 10 Locations with Occurrences:")
-st.dataframe(top_10_locations)
+    # Display tabulated data in Streamlit
+    st.write(top_100_occurrences)
