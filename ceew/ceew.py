@@ -1,6 +1,3 @@
-pip install streamlit pandas folium geopandas scikit-learn numpy matplotlib
-pip freeze > requirements.txt
-
 
 import streamlit as st
 import pandas as pd
