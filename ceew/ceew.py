@@ -183,7 +183,7 @@ st.markdown(
 
 st.markdown('<div class="title">Delhi Complaints Map</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="description">Explore the top 100 complaint hotspots in Delhi based on different offence types.</div>',
+    '<div class="description">Explore the top 100 complaint hotspots in Delhi based on different offence types.click on the spots on map to get images and status details.</div>',
     unsafe_allow_html=True)
 
 # Load data
