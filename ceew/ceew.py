@@ -179,7 +179,7 @@ st.markdown(
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
     body {
         font-family: 'Roboto', sans-serif;
-        background: url("https://example.com/background.jpg");
+        background: url("https://www.istockphoto.com/photo/asian-woman-are-going-to-work-she-wears-n95-mask-prevent-pm2-5-dust-and-smog-she-is-gm1126465039-296577928");
         background-size: cover;
     }
     .title {
