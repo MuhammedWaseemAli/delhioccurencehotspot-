@@ -9,10 +9,14 @@ import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 import streamlit.components.v1 as components
 
-# Load the CSV file with a specified encoding
-csv_path = r'C:\Users\wasee\OneDrive\Desktop\ceew project\complaints data analysis\complaintcopiedcsv.csv'
-complaints_df = pd.read_csv(csv_path, encoding='ISO-8859-1')
+# Download the zipped CSV file from GitHub
+url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
+response = requests.get(url)
+z = zipfile.ZipFile(io.BytesIO(response.content))
 
+# Extract and read the CSV file from the zip
+with z.open('complaintcopiedcsv.csv') as f:
+    complaints_df = pd.read_csv(f, encoding='ISO-8859-1')
 # Remove rows 2 to 57556
 complaints_df = complaints_df.drop(complaints_df.index[1:57556])
 
