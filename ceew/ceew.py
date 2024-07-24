@@ -140,13 +140,13 @@ st.set_page_config(page_title="Delhi Complaints Map", layout="wide")
 
 # Hide Streamlit style
 hide_streamlit_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            .stApp { background: white; }
-            .viewerBadge_link__1S137 {display: none;}
-            </style>
-            """
+    <style>
+    #MainMenu { display: none !important; }
+    footer { display: none !important; }
+    .stApp { background: white; }
+    .viewerBadge_link__1S137 { display: none !important; }
+    </style>
+    """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # Custom page styles
