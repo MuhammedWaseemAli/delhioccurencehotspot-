@@ -12,27 +12,27 @@ import zipfile
 import io
 import os
 
-# URL reading
+
 csv_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
 shapefile_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/delhi%20shape%20file.zip?raw=true'
 
-# Extract zip file
+
 def download_and_extract_zip(url, extract_to):
     response = requests.get(url)
     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
         z.extractall(extract_to)
 
-# Create directories if they don't exist
+
 csv_extract_dir = 'extracted_csv'
 shapefile_extract_dir = 'extracted_shapefile'
 os.makedirs(csv_extract_dir, exist_ok=True)
 os.makedirs(shapefile_extract_dir, exist_ok=True)
 
-# Download and extract
+
 download_and_extract_zip(csv_zip_url, csv_extract_dir)
 download_and_extract_zip(shapefile_zip_url, shapefile_extract_dir)
 
-# Nested zip file extraction
+
 nested_shapefile_zip = os.path.join(shapefile_extract_dir, 'delhi shape file.zip')
 
 def extract_nested_zip(zip_path, extract_to):
@@ -135,10 +135,10 @@ def create_map(offence_type, complaints_df, wards_gdf):
     m.get_root().html.add_child(folium.Element(legend_html))
     return m, top_100_occurrences
 
-# Page configuration
+
 st.set_page_config(page_title="Delhi Complaints Map", layout="wide")
 
-# Hide Streamlit style
+
 hide_streamlit_style = """
     <style>
     #MainMenu { display: none !important; }
