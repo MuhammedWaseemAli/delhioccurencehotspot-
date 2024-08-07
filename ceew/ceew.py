@@ -11,30 +11,19 @@ import requests
 import zipfile
 import io
 import os
-
-
 csv_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/complaintcopiedcsv.zip?raw=true'
 shapefile_zip_url = 'https://github.com/MuhammedWaseemAli/delhioccurencehotspot-/blob/main/ceew/delhi%20shape%20file.zip?raw=true'
-
-
 def download_and_extract_zip(url, extract_to):
     response = requests.get(url)
     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
         z.extractall(extract_to)
-
-
 csv_extract_dir = 'extracted_csv'
 shapefile_extract_dir = 'extracted_shapefile'
 os.makedirs(csv_extract_dir, exist_ok=True)
 os.makedirs(shapefile_extract_dir, exist_ok=True)
-
-
 download_and_extract_zip(csv_zip_url, csv_extract_dir)
 download_and_extract_zip(shapefile_zip_url, shapefile_extract_dir)
-
-
 nested_shapefile_zip = os.path.join(shapefile_extract_dir, 'delhi shape file.zip')
-
 def extract_nested_zip(zip_path, extract_to):
     if os.path.isfile(zip_path):
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -42,9 +31,7 @@ def extract_nested_zip(zip_path, extract_to):
             print(f"Extracted {zip_path} to {extract_to}")
     else:
         print(f"File {zip_path} not found")
-
 extract_nested_zip(nested_shapefile_zip, shapefile_extract_dir)
-
 @st.cache_data
 def load_data():
     csv_path = os.path.join(csv_extract_dir, 'complaintcopiedcsv.csv')
@@ -57,7 +44,6 @@ def load_data():
         return complaints_df
     else:
         raise FileNotFoundError(f"CSV file {csv_path} not found")
-
 @st.cache_data
 def load_shapefile():
     shapefile_dir = os.path.join(shapefile_extract_dir, 'delhi shape file')
@@ -71,10 +57,8 @@ def load_shapefile():
         return wards_gdf
     else:
         raise FileNotFoundError(f"Shapefile {shapefile_path} not found")
-
 def get_style_function():
     return lambda x: {'fillColor': 'transparent', 'color': 'black', 'weight': 1}
-
 def create_map(offence_type, complaints_df, wards_gdf):
     wards_gdf = wards_gdf.copy()
     filtered_df = complaints_df[complaints_df['Offences'] == offence_type].copy()
@@ -134,8 +118,6 @@ def create_map(offence_type, complaints_df, wards_gdf):
     '''
     m.get_root().html.add_child(folium.Element(legend_html))
     return m, top_100_occurrences
-
-
 st.set_page_config(page_title="Delhi Complaints Map", layout="wide")
 
 
